@@ -49,7 +49,7 @@ def _kafka_auth_conf() -> dict:
         return {}
     return {
         "security.protocol": "SASL_SSL",
-        "sasl.mechanisms":   "SCRAM-SHA-256",
+        "sasl.mechanism":    "SCRAM-SHA-256",
         "sasl.username":     api_key,
         "sasl.password":     os.getenv("KAFKA_API_SECRET", ""),
     }
