@@ -2,6 +2,7 @@ services:
   - type: web
     name: streampulse-producer
     runtime: python
+    region: singapore
     rootDir: producer
     plan: free
     buildCommand: pip install -r requirements.txt
@@ -21,13 +22,15 @@ services:
       - key: KAFKA_TOPIC_DLQ
         value: ecommerce-dlq
 
-  - type: worker
+  - type: web
     name: streampulse-consumer
     runtime: python
+    region: singapore
     rootDir: consumer
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python -m app.consumer
+    startCommand: uvicorn app.web_consumer:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
@@ -57,6 +60,7 @@ services:
   - type: web
     name: streampulse-api
     runtime: python
+    region: singapore
     rootDir: api
     plan: free
     buildCommand: pip install -r requirements.txt
