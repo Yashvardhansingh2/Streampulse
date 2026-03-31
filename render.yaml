@@ -2,7 +2,6 @@ services:
   - type: web
     name: streampulse-producer
     runtime: python
-    region: singapore
     rootDir: producer
     plan: free
     buildCommand: pip install -r requirements.txt
@@ -25,7 +24,6 @@ services:
   - type: web
     name: streampulse-consumer
     runtime: python
-    region: singapore
     rootDir: consumer
     plan: free
     buildCommand: pip install -r requirements.txt
@@ -60,7 +58,6 @@ services:
   - type: web
     name: streampulse-api
     runtime: python
-    region: singapore
     rootDir: api
     plan: free
     buildCommand: pip install -r requirements.txt
