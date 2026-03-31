@@ -42,16 +42,17 @@ def _kafka_auth_conf() -> dict:
     """
     Returns SASL config only when KAFKA_API_KEY is set.
     - Empty key  → local Docker Kafka (no auth needed)
-    - Key set    → Upstash Kafka (SCRAM-SHA-256)
+    - Key set    → Redpanda Cloud (SCRAM-SHA-256 + SASL_SSL)
     """
     api_key = os.getenv("KAFKA_API_KEY", "")
     if not api_key:
         return {}
     return {
-        "security.protocol": "SASL_SSL",
-        "sasl.mechanism":    "SCRAM-SHA-256",
-        "sasl.username":     api_key,
-        "sasl.password":     os.getenv("KAFKA_API_SECRET", ""),
+        "security.protocol":                    "SASL_SSL",
+        "sasl.mechanism":                       "SCRAM-SHA-256",
+        "sasl.username":                        api_key,
+        "sasl.password":                        os.getenv("KAFKA_API_SECRET", ""),
+        "ssl.endpoint.identification.algorithm": "none",
     }
 
 
