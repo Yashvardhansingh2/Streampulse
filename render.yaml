@@ -1,0 +1,67 @@
+services:
+  - type: web
+    name: streampulse-producer
+    runtime: python
+    rootDir: producer
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: KAFKA_BOOTSTRAP_SERVERS
+        sync: false
+      - key: KAFKA_API_KEY
+        sync: false
+      - key: KAFKA_API_SECRET
+        sync: false
+      - key: KAFKA_TOPIC_EVENTS
+        value: ecommerce-events
+      - key: KAFKA_TOPIC_DLQ
+        value: ecommerce-dlq
+
+  - type: worker
+    name: streampulse-consumer
+    runtime: python
+    rootDir: consumer
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.consumer
+    envVars:
+      - key: KAFKA_BOOTSTRAP_SERVERS
+        sync: false
+      - key: KAFKA_API_KEY
+        sync: false
+      - key: KAFKA_API_SECRET
+        sync: false
+      - key: KAFKA_TOPIC_EVENTS
+        value: ecommerce-events
+      - key: KAFKA_TOPIC_DLQ
+        value: ecommerce-dlq
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_BUCKET
+        value: streampulse-archive
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+
+  - type: web
+    name: streampulse-api
+    runtime: python
+    rootDir: api
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
