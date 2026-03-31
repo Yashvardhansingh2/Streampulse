@@ -1,0 +1,44 @@
+name: StreamPulse CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-all:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system deps (librdkafka)
+        run: sudo apt-get install -y librdkafka-dev
+
+      - name: Install producer deps
+        run: pip install -r producer/requirements.txt
+
+      - name: Install consumer deps
+        run: pip install -r consumer/requirements.txt
+
+      - name: Install api deps
+        run: pip install -r api/requirements.txt
+
+      - name: Build producer image
+        run: docker build -t streampulse-producer ./producer
+
+      - name: Build consumer image
+        run: docker build -t streampulse-consumer ./consumer
+
+      - name: Build api image
+        run: docker build -t streampulse-api ./api
+
+      - name: Confirm all images built
+        run: docker images | grep streampulse
