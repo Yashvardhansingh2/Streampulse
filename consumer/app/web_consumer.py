@@ -18,6 +18,9 @@ def _missing_required_env() -> list[str]:
         "UPSTASH_REDIS_REST_URL",
         "UPSTASH_REDIS_REST_TOKEN",
     ]
+    brokers = (os.getenv("KAFKA_BOOTSTRAP_SERVERS", "") or "").lower()
+    if any(x in brokers for x in ["redpanda.com", "confluent.cloud", "upstash"]):
+        required.extend(["KAFKA_API_KEY", "KAFKA_API_SECRET"])
     return [k for k in required if not os.getenv(k)]
 
 

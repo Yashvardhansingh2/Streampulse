@@ -38,22 +38,13 @@ FLUSH_EVERY = 100
 
 # ── Kafka config ──────────────────────────────────────────────────────────────
 
-def _kafka_auth_conf() -> dict:
-    """
-    Returns SASL config only when KAFKA_API_KEY is set.
-    - Empty key  → local Docker Kafka (no auth needed)
-    - Key set    → Redpanda Cloud (SCRAM-SHA-256 + SASL_SSL)
-    """
-    api_key = os.getenv("KAFKA_API_KEY", "")
-    if not api_key:
-        return {}
-    return {
-        "security.protocol":                    "SASL_SSL",
-        "sasl.mechanism":                       "SCRAM-SHA-256",
-        "sasl.username":                        api_key,
-        "sasl.password":                        os.getenv("KAFKA_API_SECRET", ""),
-        "ssl.endpoint.identification.algorithm": "none",
-    }
+def _requires_kafka_auth(servers: str) -> bool:
+    servers_l = servers.lower()
+    return (
+        "redpanda.com" in servers_l
+        or "confluent.cloud" in servers_l
+        or "upstash" in servers_l
+    )
 
 
 def _bootstrap_servers() -> str:
@@ -66,7 +57,7 @@ def _bootstrap_servers() -> str:
 
     # Redpanda cloud endpoints are sometimes exposed on both 9092/9093.
     # When only one is provided, try both to avoid listener mismatch issues.
-    if os.getenv("KAFKA_API_KEY", "") and "," not in servers:
+    if _requires_kafka_auth(servers) and "," not in servers:
         if servers.endswith(":9092"):
             base = servers[:-5]
             servers = f"{base}:9092,{base}:9093"
@@ -75,6 +66,31 @@ def _bootstrap_servers() -> str:
             servers = f"{base}:9093,{base}:9092"
 
     return servers
+
+def _kafka_auth_conf() -> dict:
+    """
+    Returns SASL config only when KAFKA_API_KEY is set.
+    - Empty key  → local Docker Kafka (no auth needed)
+    - Key set    → Redpanda Cloud (SCRAM-SHA-256 + SASL_SSL)
+    """
+    servers = _bootstrap_servers()
+    api_key = os.getenv("KAFKA_API_KEY", "")
+    api_secret = os.getenv("KAFKA_API_SECRET", "")
+
+    if not api_key or not api_secret:
+        if _requires_kafka_auth(servers):
+            raise RuntimeError(
+                "KAFKA_API_KEY/KAFKA_API_SECRET are required for cloud Kafka brokers"
+            )
+        return {}
+
+    return {
+        "security.protocol":                    "SASL_SSL",
+        "sasl.mechanism":                       "SCRAM-SHA-256",
+        "sasl.username":                        api_key,
+        "sasl.password":                        api_secret,
+        "ssl.endpoint.identification.algorithm": "none",
+    }
 
 
 def _consumer_conf() -> dict:
@@ -196,6 +212,8 @@ async def _process(msg, db: AsyncSession, dlq: Producer):
 # ── Main loop ─────────────────────────────────────────────────────────────────
 
 async def run():
+    print(f"[Consumer] bootstrap.servers={_bootstrap_servers()}")
+    print(f"[Consumer] using_auth={bool(os.getenv('KAFKA_API_KEY', ''))}")
     consumer = Consumer(_consumer_conf())
     dlq      = Producer(_producer_conf())
     consumer.subscribe([os.getenv("KAFKA_TOPIC_EVENTS", "ecommerce-events")])
