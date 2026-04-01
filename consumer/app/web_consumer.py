@@ -33,7 +33,10 @@ async def on_startup():
 
         try:
             run_consumer = importlib.import_module("app.consumer").run
-            _consumer_task = asyncio.create_task(run_consumer())
+
+            # run_consumer() contains blocking Kafka client calls; run it in a
+            # dedicated thread so Uvicorn's event loop can still serve /health.
+            _consumer_task = asyncio.create_task(asyncio.to_thread(asyncio.run, run_consumer()))
             _startup_error = None
         except Exception as e:
             _startup_error = str(e)

@@ -56,23 +56,46 @@ def _kafka_auth_conf() -> dict:
     }
 
 
+def _bootstrap_servers() -> str:
+    servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092").strip()
+    servers = (
+        servers.replace("SASL_SSL://", "")
+        .replace("SSL://", "")
+        .replace("PLAINTEXT://", "")
+    )
+
+    # Redpanda cloud endpoints are sometimes exposed on both 9092/9093.
+    # When only one is provided, try both to avoid listener mismatch issues.
+    if os.getenv("KAFKA_API_KEY", "") and "," not in servers:
+        if servers.endswith(":9092"):
+            base = servers[:-5]
+            servers = f"{base}:9092,{base}:9093"
+        elif servers.endswith(":9093"):
+            base = servers[:-5]
+            servers = f"{base}:9093,{base}:9092"
+
+    return servers
+
+
 def _consumer_conf() -> dict:
-    servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
     conf = {
-        "bootstrap.servers":     servers,
+        "bootstrap.servers":     _bootstrap_servers(),
         "group.id":              "streampulse-analytics-v1",
         "auto.offset.reset":     "earliest",
         "enable.auto.commit":    False,
         "max.poll.interval.ms":  300000,
         "session.timeout.ms":    45000,
+        "client.id":             "streampulse-consumer",
     }
     conf.update(_kafka_auth_conf())
     return conf
 
 
 def _producer_conf() -> dict:
-    servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
-    conf = {"bootstrap.servers": servers}
+    conf = {
+        "bootstrap.servers": _bootstrap_servers(),
+        "client.id": "streampulse-dlq-producer",
+    }
     conf.update(_kafka_auth_conf())
     return conf
 
